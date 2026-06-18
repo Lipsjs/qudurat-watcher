@@ -24,3 +24,8 @@ Login is never automated. You log into the real site yourself, in your own brows
 The session values expire periodically. If checks start failing, repeat steps 2-4 for fresh ones. I know its a pain in the ass but im too lazy to fix it, you could try to implement it in tampermonkey so you dont need to keep refreshing the stinky session ID but its gonna take some elbow grease to get that working.
 
 City ID 4 is Riyadh im too lazy to check for other city IDs sorry homie. Target dates are comma-separated, `YYYY-MM-DD`.
+
+
+
+<img width="897" height="923" alt="image" src="https://github.com/user-attachments/assets/72b7980c-901f-4cd4-a3f2-ec8ae33ff313" />
+
