@@ -18,7 +18,7 @@ Login is never automated. You log into the real site yourself, in your own brows
 5. From its Headers tab, copy the Cookie value. From its Payload tab, copy sessionId and candidateId.
 6. Run run.bat from that same folder (Windows) or python relay.py directly (other platforms), which also opens watcher.html.
 7. Paste in the values from step 5, set your target dates and city ID, add a Telegram bot token and chat ID, press Start.
-8. If it dosent work its probably the shitty code and not a user error so dont worry 
+8. If it dosen't work it's probably the shitty code and not a user error so don't worry.
 ## Notes
 
 The session values expire periodically. If checks start failing, repeat steps 2-4 for fresh ones. I know its a pain in the ass but im too lazy to fix it, you could try to implement it in tampermonkey so you dont need to keep refreshing the stinky session ID but its gonna take some elbow grease to get that working.
