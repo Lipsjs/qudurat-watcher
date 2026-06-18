@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qiyas Slot Watcher</title>
+<style>
+  :root{
+    --bg:#0a0d14;
+    --panel:#121826;
+    --panel-2:#0e1320;
+    --border:#232b3d;
+    --text:#e7eaf2;
+    --text-dim:#8b93a7;
+    --accent:#3fb8ff;
+    --good:#34d399;
+    --warn:#f5a623;
+    --bad:#ff4d5e;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;padding:16px;}
+  .wrap{max-width:980px;margin:0 auto;}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .title{display:flex;align-items:center;gap:10px;}
+  .title h1{font-size:18px;margin:0;letter-spacing:.3px;}
+  .status-pill{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);
+    padding:6px 12px;border-radius:999px;font-family:var(--mono);font-size:12px;color:var(--text-dim);}
+  .status-pill.running{color:var(--accent);}
+  .status-pill.found{color:var(--bad);}
+  .status-pill .pulse{width:8px;height:8px;border-radius:50%;background:currentColor;}
+  .status-pill.running .pulse{animation:blink 1.2s infinite;}
+  .status-pill.found .pulse{animation:blink .5s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:14px;}
+  @media (max-width:760px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:0 0 12px;}
+
+  label{display:block;font-size:12.5px;color:var(--text-dim);margin-bottom:5px;margin-top:12px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text],input[type=url]{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);padding:9px 10px;font-size:13.5px;font-family:var(--mono);outline:none;
+  }
+  textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);padding:9px 10px;font-size:12px;font-family:var(--mono);outline:none;
+    resize:vertical;min-height:70px;
+  }
+  input:focus,textarea:focus{border-color:var(--accent);}
+  .hint{font-size:11.5px;color:var(--text-dim);margin-top:6px;line-height:1.5;}
+  .hint .link{color:var(--accent);text-decoration:none;cursor:pointer;}
+
+  .checkrow{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--text-dim);}
+  .checkrow input{width:14px;height:14px;}
+
+  button.btn{cursor:pointer;border:none;border-radius:8px;padding:10px 14px;font-size:13.5px;font-weight:600;
+    font-family:var(--sans);}
+  .btn-primary{background:var(--accent);color:#04141f;}
+  .btn-stop{background:var(--bad);color:#1a0608;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn-ghost:hover{border-color:var(--accent);}
+  .btn-block{width:100%;margin-top:10px;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-row .btn{flex:1;}
+
+  .telegram-status{font-size:12px;font-family:var(--mono);margin-top:8px;color:var(--text-dim);min-height:16px;}
+  .telegram-status.ok{color:var(--good);}
+  .telegram-status.err{color:var(--bad);}
+
+  .booknow{display:block;text-align:center;text-decoration:none;background:var(--good);color:#04241a;
+    font-weight:700;border-radius:10px;padding:14px;font-size:14.5px;margin-top:4px;}
+  .booknow.pulse{animation:bookpulse 1s infinite;background:var(--bad);color:#240608;}
+  @keyframes bookpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.025);}}
+
+  .countdown-wrap{display:flex;align-items:center;gap:16px;}
+  .ring{width:78px;height:78px;flex:0 0 auto;}
+  .ring circle{fill:none;stroke-width:6;}
+  .ring .bg{stroke:var(--border);}
+  .ring .fg{stroke:var(--accent);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;
+    transition:stroke-dashoffset .25s linear;}
+  .countdown-text{font-family:var(--mono);font-size:13px;color:var(--text-dim);}
+  .countdown-text .big{font-size:22px;color:var(--text);display:block;}
+
+  .log{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px;
+    height:300px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.6;}
+  .log .entry{white-space:pre-wrap;word-break:break-word;margin-bottom:2px;}
+  .log .t-info{color:var(--text-dim);}
+  .log .t-ok{color:var(--good);}
+  .log .t-err{color:var(--bad);}
+  .log .t-warn{color:var(--warn);}
+  .log .ts{color:#4b5468;margin-right:6px;}
+
+  details.help{margin-top:6px;}
+  details.help summary{cursor:pointer;font-size:12.5px;color:var(--accent);}
+  details.help .body{font-size:12px;color:var(--text-dim);line-height:1.7;margin-top:10px;}
+  details.help code{background:var(--panel-2);padding:2px 5px;border-radius:4px;font-family:var(--mono);}
+  details.help ol{padding-left:18px;}
+  details.help li{margin-bottom:6px;}
+
+  footer{text-align:center;color:#3d465c;font-size:11px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title">
+      <h1>Qiyas Slot Watcher</h1>
+    </div>
+    <div class="status-pill" id="statusPill"><span class="pulse"></span><span id="statusText">Idle</span></div>
+  </header>
+
+  <div class="grid">
+
+    <div>
+      <div class="card">
+        <h2>Session</h2>
+        <label for="sessionCookie">Session cookie</label>
+        <textarea id="sessionCookie" placeholder="paste the Cookie header value here"></textarea>
+        <div class="hint">See <span class="link" id="howToCookieLink">how to get this</span> below.</div>
+        <div class="checkrow">
+          <input type="checkbox" id="rememberCookie">
+          <label style="margin:0;" for="rememberCookie">Remember on this device</label>
+        </div>
+        <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label for="sessionId">sessionId</label>
+            <input type="text" id="sessionId">
+          </div>
+          <div>
+            <label for="candidateId">candidateId</label>
+            <input type="text" id="candidateId">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Target</h2>
+        <label for="cityId">City ID</label>
+        <input type="text" id="cityId" value="4">
+        <label for="targetDates">Target dates</label>
+        <input type="text" id="targetDates" value="2026-06-29,2026-06-30">
+        <div class="hint">Comma-separated, format YYYY-MM-DD.</div>
+      </div>
+
+      <div class="card">
+        <h2>Relay</h2>
+        <label for="relayUrl">Relay URL</label>
+        <input type="url" id="relayUrl" value="http://localhost:8787/check">
+        <div class="hint">Run relay.py locally and leave this as-is.</div>
+      </div>
+
+      <div class="card">
+        <h2>Telegram</h2>
+        <label for="tgToken">Bot token</label>
+        <input type="text" id="tgToken">
+        <label for="tgChat">Chat ID</label>
+        <input type="text" id="tgChat">
+        <button class="btn btn-ghost btn-block" id="testTelegramBtn">Test Telegram</button>
+        <div class="telegram-status" id="tgStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Monitoring</h2>
+        <div class="checkrow">
+          <input type="checkbox" id="pauseOnFound" checked>
+          <label style="margin:0;" for="pauseOnFound">Pause when a slot is found</label>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" id="startBtn">Start</button>
+          <button class="btn btn-stop" id="stopBtn" style="display:none;">Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Status</h2>
+        <div class="countdown-wrap">
+          <svg class="ring" viewBox="0 0 80 80">
+            <circle class="bg" cx="40" cy="40" r="34"></circle>
+            <circle class="fg" id="ringFg" cx="40" cy="40" r="34"
+              stroke-dasharray="213.6" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="countdown-text">
+            <span class="big" id="countdownNum">--</span>
+            next check &middot; every 30s<br>
+            last check: <span id="lastCheck">never</span>
+          </div>
+        </div>
+
+        <a href="https://e-services.etec.gov.sa/Qiyas.TRAS.Web.Internet/" target="_blank" rel="noopener"
+           class="booknow" id="bookNowBtn">Open booking site</a>
+
+        <button class="btn btn-ghost btn-block" id="stopAlarmBtn" style="display:none;background:var(--bad);color:#1a0608;">
+          Stop alarm
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>Log</h2>
+        <div class="log" id="logBox"></div>
+      </div>
+
+      <div class="card">
+        <details class="help" id="howToCookieDetails">
+          <summary>How to get the cookie, sessionId, candidateId</summary>
+          <div class="body">
+            <ol>
+              <li>Log in on the site and start a booking search until you reach the date/city page.</li>
+              <li>Open DevTools, Network tab, enable Preserve log.</li>
+              <li>Find the <code>GetAvailableCBTCentersBySessionId</code> request.</li>
+              <li>Headers tab, Request Headers, copy the value after <code>Cookie:</code>.</li>
+              <li>Payload tab, copy <code>sessionId</code> and <code>candidateId</code>.</li>
+            </ol>
+            These expire. If checks start failing, repeat this for fresh values.
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <footer>Local tool. Nothing leaves this device except the Telegram message and the request to relay.py.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  const els = {
+    sessionCookie: $('sessionCookie'), rememberCookie: $('rememberCookie'),
+    sessionId: $('sessionId'), candidateId: $('candidateId'), cityId: $('cityId'),
+    targetDates: $('targetDates'), relayUrl: $('relayUrl'),
+    tgToken: $('tgToken'), tgChat: $('tgChat'), testTelegramBtn: $('testTelegramBtn'), tgStatus: $('tgStatus'),
+    pauseOnFound: $('pauseOnFound'), startBtn: $('startBtn'), stopBtn: $('stopBtn'),
+    statusPill: $('statusPill'), statusText: $('statusText'),
+    ringFg: $('ringFg'), countdownNum: $('countdownNum'), lastCheck: $('lastCheck'),
+    bookNowBtn: $('bookNowBtn'), stopAlarmBtn: $('stopAlarmBtn'), logBox: $('logBox'),
+    howToCookieLink: $('howToCookieLink'), howToCookieDetails: $('howToCookieDetails')
+  };
+
+  els.howToCookieLink.addEventListener('click', () => {
+    els.howToCookieDetails.open = true;
+    els.howToCookieDetails.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+
+  const STORAGE_KEY = 'qiyasWatcherSettings';
+  const POLL_SECONDS = 30;
+  const RING_CIRC = 213.6;
+
+  let pollTimer = null;
+  let countdownTimer = null;
+  let secondsLeft = POLL_SECONDS;
+  let alarmCtx = null;
+  let alarmNodes = null;
+
+  function loadSettings(){
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){}
+    if (s.sessionId) els.sessionId.value = s.sessionId;
+    if (s.candidateId) els.candidateId.value = s.candidateId;
+    if (s.cityId) els.cityId.value = s.cityId;
+    if (s.targetDates) els.targetDates.value = s.targetDates;
+    if (s.relayUrl) els.relayUrl.value = s.relayUrl;
+    if (s.tgToken) els.tgToken.value = s.tgToken;
+    if (s.tgChat) els.tgChat.value = s.tgChat;
+    if (typeof s.pauseOnFound === 'boolean') els.pauseOnFound.checked = s.pauseOnFound;
+    if (s.rememberCookie){ els.rememberCookie.checked = true; if (s.sessionCookie) els.sessionCookie.value = s.sessionCookie; }
+  }
+  function saveSettings(){
+    const s = {
+      sessionId: els.sessionId.value,
+      candidateId: els.candidateId.value,
+      cityId: els.cityId.value,
+      targetDates: els.targetDates.value,
+      relayUrl: els.relayUrl.value,
+      tgToken: els.tgToken.value,
+      tgChat: els.tgChat.value,
+      pauseOnFound: els.pauseOnFound.checked,
+      rememberCookie: els.rememberCookie.checked,
+      sessionCookie: els.rememberCookie.checked ? els.sessionCookie.value : ''
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  }
+  document.addEventListener('input', saveSettings);
+
+  function log(msg, type='info'){
+    const div = document.createElement('div');
+    div.className = 'entry t-' + type;
+    const ts = new Date().toLocaleTimeString();
+    div.innerHTML = `<span class="ts">${ts}</span>${escapeHtml(msg)}`;
+    els.logBox.appendChild(div);
+    while (els.logBox.children.length > 250) els.logBox.removeChild(els.logBox.firstChild);
+    els.logBox.scrollTop = els.logBox.scrollHeight;
+  }
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setStatus(text, cls){
+    els.statusText.textContent = text;
+    els.statusPill.className = 'status-pill' + (cls ? ' ' + cls : '');
+  }
+
+  function startAlarm(){
+    if (!alarmCtx) alarmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (alarmCtx.state === 'suspended') alarmCtx.resume();
+    stopAlarm();
+    const ctx = alarmCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    gain.gain.value = 0.18;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    let high = true;
+    const sweep = setInterval(() => {
+      high = !high;
+      osc.frequency.setValueAtTime(high ? 880 : 600, ctx.currentTime);
+    }, 280);
+    alarmNodes = { osc, gain, sweep };
+    els.stopAlarmBtn.style.display = 'block';
+  }
+  function stopAlarm(){
+    if (alarmNodes){
+      clearInterval(alarmNodes.sweep);
+      try { alarmNodes.osc.stop(); } catch(e){}
+      alarmNodes = null;
+    }
+    els.stopAlarmBtn.style.display = 'none';
+  }
+  els.stopAlarmBtn.addEventListener('click', stopAlarm);
+
+  async function sendTelegram(text){
+    const token = els.tgToken.value.trim();
+    const chat = els.tgChat.value.trim();
+    if (!token || !chat) throw new Error('missing bot token or chat id');
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.description || 'telegram rejected the request');
+    return data;
+  }
+
+  els.testTelegramBtn.addEventListener('click', async () => {
+    els.tgStatus.textContent = 'sending...';
+    els.tgStatus.className = 'telegram-status';
+    try {
+      await sendTelegram('Qiyas Slot Watcher: test message.');
+      els.tgStatus.textContent = 'sent';
+      els.tgStatus.className = 'telegram-status ok';
+      log('Telegram test sent.', 'ok');
+    } catch (e) {
+      els.tgStatus.textContent = 'failed: ' + e.message;
+      els.tgStatus.className = 'telegram-status err';
+      log('Telegram test failed: ' + e.message, 'err');
+    }
+  });
+
+  function parseDates(){
+    return els.targetDates.value.split(',').map(d => d.trim()).filter(Boolean);
+  }
+
+  async function checkSlots(){
+    const sessionCookie = els.sessionCookie.value.trim();
+    const sessionId = els.sessionId.value.trim();
+    const candidateId = els.candidateId.value.trim();
+    const cityId = els.cityId.value.trim() || '4';
+    const dates = parseDates();
+    const relayUrl = els.relayUrl.value.trim();
+
+    if (!dates.length){ log('No target dates set.', 'warn'); return; }
+    if (!sessionCookie){ log('No session cookie set.', 'warn'); return; }
+    if (!sessionId || !candidateId){ log('sessionId / candidateId not set.', 'warn'); return; }
+
+    try {
+      const res = await fetch(relayUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionCookie, sessionId, candidateId, cityId, dates })
+      });
+      const data = await res.json();
+      if (!data.ok){
+        log('Error: ' + (data.error || 'unknown'), 'warn');
+        return;
+      }
+      for (const r of data.results){
+        if (r.available){
+          const names = r.centers.map(c => c.name + (c.remaining ? ` (${c.remaining})` : '')).join(', ');
+          log(`Available on ${r.date}: ${names}`, 'ok');
+        } else {
+          log(`No slots on ${r.date} (checked ${r.totalCenters} centers).`, 'info');
+        }
+      }
+      if (data.anyAvailable) onSlotFound(data.results.filter(r => r.available));
+    } catch (e) {
+      log('Could not reach relay at ' + relayUrl + ': ' + e.message, 'err');
+    }
+  }
+
+  function onSlotFound(availableResults){
+    setStatus('Found', 'found');
+    els.bookNowBtn.classList.add('pulse');
+    els.bookNowBtn.textContent = 'Slot available — book now';
+    const summary = availableResults.map(r =>
+      `${r.date}: ${r.centers.map(c => c.name).join(', ')}`
+    ).join(' | ');
+    log('FOUND — ' + summary, 'ok');
+    startAlarm();
+    sendTelegram(`Qiyas slot available.\n${summary}\nBook: https://e-services.etec.gov.sa/Qiyas.TRAS.Web.Internet/`)
+      .then(() => log('Telegram alert sent.', 'ok'))
+      .catch(e => log('Telegram alert failed: ' + e.message, 'err'));
+    if (els.pauseOnFound.checked) stopPolling();
+  }
+
+  function tickCountdown(){
+    secondsLeft--;
+    if (secondsLeft < 0) secondsLeft = POLL_SECONDS;
+    els.countdownNum.textContent = secondsLeft + 's';
+    const offset = RING_CIRC * (1 - secondsLeft / POLL_SECONDS);
+    els.ringFg.style.strokeDashoffset = offset;
+  }
+
+  function startPolling(){
+    if (!els.sessionCookie.value.trim()){ log('Paste the session cookie first.', 'warn'); return; }
+    if (!els.sessionId.value.trim() || !els.candidateId.value.trim()){ log('Fill in sessionId and candidateId first.', 'warn'); return; }
+    if (!parseDates().length){ log('Enter at least one target date.', 'warn'); return; }
+
+    setStatus('Running', 'running');
+    els.startBtn.style.display = 'none';
+    els.stopBtn.style.display = 'block';
+    els.bookNowBtn.classList.remove('pulse');
+    els.bookNowBtn.textContent = 'Open booking site';
+    log(`Started for ${parseDates().join(', ')} (city ${els.cityId.value}).`, 'info');
+
+    secondsLeft = POLL_SECONDS;
+    els.countdownNum.textContent = secondsLeft + 's';
+    els.ringFg.style.strokeDashoffset = 0;
+
+    checkSlots();
+    els.lastCheck.textContent = new Date().toLocaleTimeString();
+
+    countdownTimer = setInterval(tickCountdown, 1000);
+    pollTimer = setInterval(async () => {
+      await checkSlots();
+      els.lastCheck.textContent = new Date().toLocaleTimeString();
+      secondsLeft = POLL_SECONDS;
+    }, POLL_SECONDS * 1000);
+  }
+
+  function stopPolling(){
+    clearInterval(pollTimer); pollTimer = null;
+    clearInterval(countdownTimer); countdownTimer = null;
+    setStatus('Idle');
+    els.startBtn.style.display = 'block';
+    els.stopBtn.style.display = 'none';
+    els.countdownNum.textContent = '--';
+    log('Stopped.', 'info');
+  }
+
+  els.startBtn.addEventListener('click', () => {
+    if (!alarmCtx) alarmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (alarmCtx.state === 'suspended') alarmCtx.resume();
+    startPolling();
+  });
+  els.stopBtn.addEventListener('click', stopPolling);
+
+  loadSettings();
+  els.ringFg.style.strokeDashoffset = 0;
+  log('Ready.', 'info');
+})();
+</script>
+</body>
+</html>
