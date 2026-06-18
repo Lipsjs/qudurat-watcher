@@ -2,10 +2,6 @@
 # qudurat-watcher
 I fucking hate the Qiyas website and the constant search for the desired exam slot reservation date so I made this simple program that checks the Qiyas exam booking site for open slots and sends a Telegram alert when one opens up.
 
-
-
-Checks the Qiyas exam booking site for open slots on specific dates and sends a Telegram message the moment one opens up.
-
 ## How it works
 
 A small Python script (`relay.py`) runs locally and checks slot availability for the dates you set, across every center in a given city, every 30 seconds. A browser dashboard (`watcher.html`) gives you a place to set things up, watch the live log, and hear an alarm when something opens. When a slot appears, you get a Telegram message with the details.
